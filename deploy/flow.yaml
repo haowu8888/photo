@@ -21,9 +21,10 @@ stages:
           ANDROID_CMDLINE: commandlinetools-linux-11076708_latest.zip
         steps:
           - name: 安装工具
+            # cloudreve-upload 等内置步骤要 python3
             kind: install-packages
             with:
-              packages: git unzip curl
+              packages: git unzip curl python3
               mirror: aliyun
           - name: 拉取代码
             run: |
