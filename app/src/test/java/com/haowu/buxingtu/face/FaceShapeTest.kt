@@ -47,6 +47,8 @@ class FaceShapeTest {
         val u = shape.toUniforms(1f, 1f, mirror = false, slim = 1f, eyeAmount = 0f)
         assertTrue("左脸颊往右收", u.slim[2] > 0f)
         assertTrue("右脸颊往左收", u.slim[10] < 0f)
+        // 双眼水平时只水平收，不往上提（往上提会把下巴捏尖、嘴挤窄）
+        for (i in 0 until 4) assertEquals(0f, u.slim[i * 4 + 3], 1e-6f)
         assertEquals(0.3f * FaceShape.SLIM_RADIUS, u.slimRadius, 1e-5f)
     }
 }

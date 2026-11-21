@@ -56,18 +56,22 @@ class FaceShape(
         val cx = ox(centerX)
         val cy = oy(centerY)
         val faceW = len(width)
+        // 沿双眼连线方向水平往里收（朝鼻子收会把下巴往上提、捏尖，嘴也会被挤窄）
+        var axX = eyeOut[3] - eyeOut[0]
+        var axY = eyeOut[4] - eyeOut[1]
+        val axLen = hypot(axX, axY).coerceAtLeast(1e-6f)
+        axX /= axLen
+        axY /= axLen
+        val mag = faceW * SLIM_MAX * slim
         val slimOut = FloatArray(16)
         for (i in 0 until 4) {
             val px = ox(cheeks[i * 2])
             val py = oy(cheeks[i * 2 + 1])
-            val dx = cx - px
-            val dy = cy - py
-            val d = hypot(dx, dy).coerceAtLeast(1e-6f)
-            val mag = faceW * SLIM_MAX * slim
+            val inward = if ((cx - px) * axX + (cy - py) * axY >= 0f) 1f else -1f
             slimOut[i * 4] = px
             slimOut[i * 4 + 1] = py
-            slimOut[i * 4 + 2] = dx / d * mag
-            slimOut[i * 4 + 3] = dy / d * mag
+            slimOut[i * 4 + 2] = axX * inward * mag
+            slimOut[i * 4 + 3] = axY * inward * mag
         }
         return FaceUniforms(eyeOut, slimOut, faceW * SLIM_RADIUS, eyeAmount * EYE_MAX)
     }
@@ -75,7 +79,7 @@ class FaceShape(
     companion object {
         /** 瘦脸最大位移、影响半径（脸宽的比例），大眼最大放大量 */
         const val SLIM_MAX = 0.09f
-        const val SLIM_RADIUS = 0.45f
+        const val SLIM_RADIUS = 0.38f
         const val EYE_MAX = 0.28f
 
         /**
@@ -105,7 +109,8 @@ class FaceShape(
                 (nose.x + dx * down * iod + ax * side * iod) / w,
                 (nose.y + dy * down * iod + ay * side * iod) / h,
             )
-            val cheeks = pt(0.25f, -0.95f) + pt(0.75f, -0.8f) + pt(0.25f, 0.95f) + pt(0.75f, 0.8f)
+            // 控制点落在下颌线上（鼻底往下 0.3 / 0.85 倍眼距，往两侧 1.0 / 0.85 倍）
+            val cheeks = pt(0.3f, -1.0f) + pt(0.85f, -0.85f) + pt(0.3f, 1.0f) + pt(0.85f, 0.85f)
             val eyeR = iod * EYE_RADIUS / h
             return FaceShape(
                 frameAspect = w / h,
@@ -113,11 +118,14 @@ class FaceShape(
                 cheeks = cheeks,
                 centerX = nose.x / w,
                 centerY = nose.y / h,
-                width = maxOf(face.boundingBox.width().toFloat(), iod * 2.2f) / h,
+                // 脸宽只按眼距算：ML Kit 的人脸框宽窄因人、因角度变化很大（常到眼距 3 倍），会让瘦脸力度忽大忽小
+                width = iod * FACE_WIDTH_IOD / h,
                 trackingId = face.trackingId,
             )
         }
 
+        /** 脸宽 = 眼距 × 这个比例 */
+        const val FACE_WIDTH_IOD = 2.3f
         /** 大眼影响半径（两眼间距的比例） */
         const val EYE_RADIUS = 0.48f
         /** shader 里最多同时处理的人脸数，和 film.frag 的 MAX_FACES 一致 */
