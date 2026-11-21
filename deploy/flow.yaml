@@ -1,0 +1,116 @@
+# 睡图：拉代码 → Android SDK（缓存在 $FLOW_TOOLS，只有第一次下载）→ 签名打包 APK → 产物包 + 上传 Cloudreve /builds/shuitu
+# 网盘目录只留最新一版、分享链接固定；App 里的「检查更新」按分享里的文件名（Shuitu-<版本>.apk）判断新版本。
+# 版本 = version.txt 的主次版本 + 运行号（0.3 → 0.3.<运行号>），versionCode = 100 + 运行号，每次发布都比上一次新。
+# 密钥（流水线级）：SHUITU_KEYSTORE = keys/release.jks 的 base64，SHUITU_STORE_PASSWORD = 库和别名的密码。
+name: shuitu
+concurrency:
+  group: shuitu-release
+retention:
+  runs: 30
+stages:
+  - name: 构建
+    jobs:
+      - name: android
+        image: eclipse-temurin:17-jdk
+        timeout: 45m
+        env:
+          REPO: https://github.com/haowu8888/photo.git
+          BRANCH: main
+          # settings.gradle.kts 看到它就先走阿里云 Maven 镜像
+          MAVEN_MIRROR: aliyun
+          ANDROID_CMDLINE: commandlinetools-linux-11076708_latest.zip
+        steps:
+          - name: 安装工具
+            kind: install-packages
+            with:
+              packages: git unzip curl
+              mirror: aliyun
+          - name: 拉取代码
+            run: |
+              # 构建节点直连 GitHub 常断：先直连取提交号（请求很小），再经加速地址下载，核对提交号一致才构建，防止代理篡改代码
+              for i in 1 2 3 4 5; do
+                WANT="$(timeout 60 git ls-remote "$REPO" "refs/heads/$BRANCH" | cut -f1)" && [ -n "$WANT" ] && break
+                [ "$i" = 5 ] && { echo "无法从 GitHub 获取 $BRANCH 的提交号"; exit 1; }
+                sleep 5
+              done
+              echo "目标提交 $WANT"
+              git init -q src
+              for url in "https://ghfast.top/$REPO" "https://gh-proxy.com/$REPO" "$REPO"; do
+                if timeout 300 git -C src -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 fetch -q --depth 1 "$url" "$WANT" 2>/dev/null \
+                  || timeout 300 git -C src -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 fetch -q --depth 1 "$url" "$BRANCH"; then
+                  [ "$(git -C src rev-parse FETCH_HEAD)" = "$WANT" ] && { echo "已从 ${url%%/https*} 拉取"; break; }
+                  echo "$url 返回的提交与 GitHub 不一致，跳过"
+                fi
+                [ "$url" = "$REPO" ] && { echo "拉取代码失败"; exit 1; }
+              done
+              git -C src reset -q --hard "$WANT"
+              git -C src log -1 --format='%h %s (%an, %ad)' --date=iso
+          - name: 准备分享链接
+            # 先让网盘目录有分享链接（已有就沿用，链接不变），输出 CLOUDREVE_SHARE_URL 给构建步骤写进 App
+            kind: cloudreve-upload
+            connection: cloudreve
+            with:
+              source: src/version.txt
+              target: /builds/shuitu
+              share: "true"
+          - name: 安装 Android SDK
+            run: |
+              SDK="$FLOW_TOOLS/android-sdk"
+              if [ ! -x "$SDK/cmdline-tools/latest/bin/sdkmanager" ]; then
+                rm -rf "$SDK/cmdline-tools" && mkdir -p "$SDK/cmdline-tools"
+                curl -fsSL --retry 3 -o /tmp/cmdline.zip "https://dl.google.com/android/repository/$ANDROID_CMDLINE"
+                unzip -q /tmp/cmdline.zip -d "$SDK/cmdline-tools" && mv "$SDK/cmdline-tools/cmdline-tools" "$SDK/cmdline-tools/latest"
+              fi
+              yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+              "$SDK/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" "build-tools;34.0.0" > /dev/null
+              echo "ANDROID_HOME=$SDK" >> "$FLOW_ENV"
+              ls "$SDK/platforms" "$SDK/build-tools"
+          - name: 构建 APK
+            run: |
+              cd src
+              BASE="$(tr -d ' \r\n' < version.txt)"
+              VERSION="$BASE.$FLOW_RUN_NUMBER"
+              CODE=$((100 + FLOW_RUN_NUMBER))
+              SHARE="${CLOUDREVE_SHARE_URL##*/s/}"
+              SHARE="${SHARE%%[/?#]*}"
+              [ -n "$SHARE" ] || { echo "没拿到网盘分享链接（$CLOUDREVE_SHARE_URL）"; exit 1; }
+              [ -n "$SHUITU_KEYSTORE" ] && [ -n "$SHUITU_STORE_PASSWORD" ] || { echo "缺少流水线密钥 SHUITU_KEYSTORE / SHUITU_STORE_PASSWORD，不发布未签名的版本"; exit 1; }
+              echo "版本 $VERSION（versionCode $CODE，运行 #$FLOW_RUN_NUMBER，提交 $(git rev-parse --short HEAD)），更新分享 $SHARE"
+
+              # 签名文件只在这一步里存在
+              mkdir -p keys
+              echo "$SHUITU_KEYSTORE" | base64 -d > keys/release.jks
+              printf 'BUXINGTU_STORE_FILE=keys/release.jks\nBUXINGTU_STORE_PASSWORD=%s\nBUXINGTU_KEY_ALIAS=buxingtu\nBUXINGTU_KEY_PASSWORD=%s\n' \
+                "$SHUITU_STORE_PASSWORD" "$SHUITU_STORE_PASSWORD" > keys/keystore.properties
+              trap 'rm -f keys/release.jks keys/keystore.properties' EXIT
+
+              # Gradle 发行包走腾讯云镜像，缓存放跨运行的工具目录
+              sed -i 's#^distributionUrl=.*#distributionUrl=https\\://mirrors.cloud.tencent.com/gradle/gradle-8.10.2-bin.zip#' gradle/wrapper/gradle-wrapper.properties
+              export GRADLE_USER_HOME="$FLOW_TOOLS/gradle-home"
+              echo "sdk.dir=$ANDROID_HOME" > local.properties
+              chmod +x gradlew
+              ./gradlew assembleRelease --no-daemon --console=plain \
+                -PversionCode="$CODE" -PversionName="$VERSION" -PupdateShare="$SHARE"
+
+              APK=app/build/outputs/apk/release/app-release.apk
+              # 确认用的是发布签名（缺签名配置时 Gradle 会回落到 debug 签名，那样的包装不上）
+              "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK" | grep -q "CN=Buxingtu" \
+                || { echo "APK 不是发布签名"; exit 1; }
+              mkdir -p ../release
+              cp "$APK" "../release/Shuitu-$VERSION.apk"
+              ls -l ../release
+              echo "VERSION=$VERSION" >> "$FLOW_OUTPUT"
+          - name: 产物包
+            kind: artifact-upload
+            with:
+              name: shuitu
+              paths: release/*
+              version: ${FLOW_RUN_NUMBER}
+          - name: 上传网盘
+            kind: cloudreve-upload
+            connection: cloudreve
+            with:
+              source: release/*
+              target: /builds/shuitu
+              clean: "true"
+              share: "true"

@@ -20,6 +20,8 @@ data class Beauty(
 
     companion object {
         val OFF = Beauty()
+        /** 一键美颜：自然不夸张的一组值 */
+        val AUTO = Beauty(smooth = 0.6f, whiten = 0.35f, rosy = 0.3f, slim = 0.35f, eyes = 0.3f)
     }
 }
 

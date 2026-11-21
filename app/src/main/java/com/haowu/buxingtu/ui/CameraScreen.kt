@@ -36,6 +36,7 @@ import androidx.compose.material.icons.outlined.FlashOff
 import androidx.compose.material.icons.outlined.FlashOn
 import androidx.compose.material.icons.outlined.GridOff
 import androidx.compose.material.icons.outlined.GridOn
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Timer10
 import androidx.compose.material.icons.outlined.Timer3
@@ -191,6 +192,8 @@ fun CameraScreen(vm: CameraViewModel, onController: (CameraController) -> Unit) 
     }
 
     LaunchedEffect(vm.shutterRequests) { if (vm.shutterRequests > 0) capture() }
+    LaunchedEffect(Unit) { vm.checkUpdate(manual = false) }
+    if (vm.showUpdate) UpdateDialog(vm) { vm.showUpdate = false }
 
     Column(
         Modifier
@@ -324,6 +327,13 @@ private fun TopBar(vm: CameraViewModel) {
         ) { vm.cycleTimer() }
         TopButton(icon = if (vm.grid) Icons.Outlined.GridOn else Icons.Outlined.GridOff, active = vm.grid) { vm.toggleGrid() }
         TopButton(text = "DATE", active = vm.dateStamp) { vm.dateStamp = !vm.dateStamp }
+        Box {
+            TopButton(icon = Icons.Outlined.Settings) { vm.showUpdate = true }
+            // 有新版本时设置按钮上亮个点
+            if (vm.update.release != null) {
+                Box(Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 12.dp).size(6.dp).clip(CircleShape).background(Accent))
+            }
+        }
     }
 }
 
@@ -369,7 +379,7 @@ private fun TopButton(
     }
     Box(
         Modifier
-            .size(width = 52.dp, height = 40.dp)
+            .size(width = 46.dp, height = 40.dp)
             .clip(RoundedCornerShape(8.dp))
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -515,11 +525,23 @@ private fun BottomPanel(vm: CameraViewModel, onShutter: () -> Unit, onFlip: () -
                         )
                     }
                 }
-            } else if (mode == 1 && vm.beauty.enabled) {
+            } else if (mode == 1) {
+                // 一键美颜：套用预设；已经是预设时再点就关掉
+                val auto = vm.beauty == Beauty.AUTO
                 Text(
-                    "重置", color = Color(0xFF888888), fontSize = 13.sp,
-                    modifier = Modifier.clickable { vm.updateBeauty(Beauty.OFF) }.padding(vertical = 6.dp, horizontal = 4.dp)
+                    "一键美颜", color = if (auto) Accent else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (auto) Accent.copy(alpha = 0.18f) else Color(0xFF2A2A2A))
+                        .clickable { vm.updateBeauty(if (auto) Beauty.OFF else Beauty.AUTO) }
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 )
+                if (vm.beauty.enabled) {
+                    Text(
+                        "重置", color = Color(0xFF888888), fontSize = 13.sp,
+                        modifier = Modifier.clickable { vm.updateBeauty(Beauty.OFF) }.padding(vertical = 6.dp, horizontal = 10.dp)
+                    )
+                }
             }
         }
 

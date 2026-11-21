@@ -18,6 +18,10 @@ import com.haowu.buxingtu.filter.Filter
 import com.haowu.buxingtu.filter.Filters
 import com.haowu.buxingtu.frame.FrameStyle
 import com.haowu.buxingtu.gl.Beauty
+import com.haowu.buxingtu.update.Updater
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
+import java.io.File
 
 enum class AspectRatio(val label: String, val ratio: Float) {
     R3_2("3:2", 1.5f), R4_3("4:3", 4f / 3f), R1_1("1:1", 1f), R16_9("16:9", 16f / 9f);
@@ -89,6 +93,70 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     /** 音量键等外部触发快门，每次 +1 */
     var shutterRequests by mutableIntStateOf(0)
         private set
+
+    /** 自动更新的界面状态 */
+    data class UpdateUi(
+        val checking: Boolean = false,
+        val release: Updater.Release? = null,
+        val upToDate: Boolean = false,
+        /** 下载进度 0..1，null = 没在下载 */
+        val progress: Float? = null,
+        /** 下载好、等安装的包 */
+        val apk: File? = null,
+        val error: String? = null,
+    )
+
+    var update by mutableStateOf(UpdateUi())
+        private set
+    var showUpdate by mutableStateOf(false)
+
+    /** manual = 用户点的「检查更新」；自动检查每 6 小时最多一次，没新版本时不打扰 */
+    fun checkUpdate(manual: Boolean) {
+        if (!Updater.enabled || update.checking || update.progress != null) return
+        val now = System.currentTimeMillis()
+        if (!manual && now - prefs.getLong("updateChecked", 0) < 6 * 3600_000L) return
+        update = update.copy(checking = true, error = null, upToDate = false)
+        viewModelScope.launch {
+            update = runCatching { Updater.check() }.fold(
+                onSuccess = { r ->
+                    prefs.edit { putLong("updateChecked", now) }
+                    if (r != null && !manual) showUpdate = true
+                    UpdateUi(release = r, upToDate = r == null)
+                },
+                onFailure = { UpdateUi(error = it.message) },
+            )
+        }
+    }
+
+    fun downloadUpdate() {
+        val r = update.release ?: return
+        if (update.progress != null) return
+        update = update.copy(progress = 0f, error = null)
+        viewModelScope.launch {
+            runCatching {
+                Updater.download(getApplication(), r) { done, total ->
+                    if (total > 0) {
+                        val p = done.toFloat() / total
+                        if (p - (update.progress ?: 0f) > 0.01f || done == total) {
+                            android.os.Handler(android.os.Looper.getMainLooper()).post { update = update.copy(progress = p) }
+                        }
+                    }
+                }
+            }.onSuccess { apk ->
+                update = update.copy(progress = null, apk = apk)
+                installUpdate()
+            }.onFailure {
+                update = update.copy(progress = null, error = it.message)
+            }
+        }
+    }
+
+    /** 已下载就交给系统安装；还没允许安装未知应用时先跳到系统设置，回来再点一次。 */
+    fun installUpdate() {
+        val apk = update.apk ?: return
+        val app = getApplication<Application>()
+        if (Updater.canInstall(app)) Updater.install(app, apk) else Updater.openInstallPermission(app)
+    }
 
     init {
         filter.frame?.let {

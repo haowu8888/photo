@@ -23,6 +23,8 @@ android {
         targetSdk = 35
         versionCode = (providers.gradleProperty("versionCode").orNull ?: "1").toInt()
         versionName = providers.gradleProperty("versionName").orNull ?: "0.1.0"
+        // 自动更新用的 Cloudreve 分享 ID，Flow 流水线构建时传 -PupdateShare；本地构建为空，App 不检查更新
+        buildConfigField("String", "UPDATE_SHARE", "\"${providers.gradleProperty("updateShare").orNull ?: ""}\"")
         // ML Kit 人脸检测带原生库，只打主流手机的两种 ABI，控制安装包大小
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
@@ -53,7 +55,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     testOptions { unitTests.isIncludeAndroidResources = true }
 }

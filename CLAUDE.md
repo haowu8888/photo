@@ -15,7 +15,8 @@ Android 胶片滤镜相机（Kotlin + Compose + CameraX + OpenGL ES 3.0）。设
 - `effect/Effect.kt` — 特效（鱼眼/镜像/万花筒/波普/色散/故障/星芒/双重曝光），code 对应 shader 的 uEffect；双重曝光第一张留在 PhotoProcessor 内存里，第二张用 SCREEN 混合合成
 - `camera/PhotoProcessor.kt` — 全分辨率 JPEG → 离屏 EGL 跑同一套渲染 → 日期戳 → 边框 → EXIF → `DCIM/睡图`
 - `camera/CameraController.kt` — CameraX 绑定、对焦、变焦、拍照
-- `ui/CameraScreen.kt`、`ui/CameraViewModel.kt` — 界面与状态（SharedPreferences 记住滤镜、强度、画幅等）
+- `ui/CameraScreen.kt`、`ui/CameraViewModel.kt` — 界面与状态（SharedPreferences 记住滤镜、强度、画幅、美颜、特效等）
+- `update/Updater.kt` + `ui/UpdateDialog.kt` — 自动更新：读 Cloudreve 分享里 `Shuitu-<版本>.apk`，比 `BuildConfig.VERSION_NAME` 新就下载、比对签名、交给系统安装（FileProvider + REQUEST_INSTALL_PACKAGES）；分享 ID 由流水线 `-PupdateShare` 注入，本地构建为空不检查
 
 ## 改滤镜
 
@@ -37,6 +38,12 @@ Android 胶片滤镜相机（Kotlin + Compose + CameraX + OpenGL ES 3.0）。设
 ```
 
 发布签名在 `keys/`（`release.jks` + `keystore.properties`，已 gitignore，用户要求放项目里防误删），宿主机 `D:\AI\keys\buxingtu\` 另有备份。缺了 release 会回落到 debug 签名，手机上无法覆盖升级。包名保持 `com.haowu.buxingtu`（改名「睡图」时没改，保证能覆盖升级）。版本号：`-PversionCode=N -PversionName=x.y.z`。
+
+## 发布（Flow）
+
+- 仓库 github.com/haowu8888/photo（公开，main）。Flow 流水线 `shuitu`（id 9b4f726a341afcd453fe6dfb，配置即 `deploy/flow.yaml`，手动触发；改了 yaml 要 PUT 到 Flow，请求体是原始 YAML）。
+- 流程：拉代码 → 先往 /builds/shuitu 传 version.txt 拿固定分享链接 → 装 Android SDK（`$FLOW_TOOLS` 缓存）→ 用流水线密钥 SHUITU_KEYSTORE / SHUITU_STORE_PASSWORD 签名打包 → 网盘只留最新 APK。版本 `version.txt`.<运行号>，versionCode 100+运行号。
+- 构建机在国内：Gradle 走腾讯云镜像、Maven 走阿里云（`MAVEN_MIRROR=aliyun`）。
 
 ## 验证
 
