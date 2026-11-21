@@ -43,6 +43,7 @@ Android 胶片滤镜相机（Kotlin + Compose + CameraX + OpenGL ES 3.0）。设
 
 - 仓库 github.com/haowu8888/photo（公开，main）。Flow 流水线 `shuitu`（id 9b4f726a341afcd453fe6dfb，配置即 `deploy/flow.yaml`，手动触发；改了 yaml 要 PUT 到 Flow，请求体是原始 YAML）。
 - 流程：拉代码 → 先往 /builds/shuitu 传 version.txt 拿固定分享链接 → 装 Android SDK（`$FLOW_TOOLS` 缓存）→ 用流水线密钥 SHUITU_KEYSTORE / SHUITU_STORE_PASSWORD 签名打包 → 网盘只留最新 APK。版本 `version.txt`.<运行号>，versionCode 100+运行号。
+- 网盘分享（固定）：https://cloudreve.haowu.fun/s/7Zip（App 里的 UPDATE_SHARE = 7Zip，由流水线注入）。
 - 构建机在国内：Gradle 走腾讯云镜像、Maven 走阿里云（`MAVEN_MIRROR=aliyun`）。
 
 ## 验证
