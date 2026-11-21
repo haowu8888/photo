@@ -8,3 +8,4 @@ local.properties
 dist/
 keys/*
 !keys/README.md
+.vscode/
