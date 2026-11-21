@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- 半径 22 的圆，减去左上偏移的圆形成月牙 -->
+    <path android:pathData="M54,28a26,26 0,1 1,-25.05 32.85a20.1,20.1 0,1 0,25.05 -32.85z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="27" android:startY="54"
+                android:endX="80" android:endY="54">
+                <item android:offset="0" android:color="#00470FD5" />
+                <item android:offset="0.45" android:color="#99470FD5" />
+                <item android:offset="1" android:color="#FF470FD5" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

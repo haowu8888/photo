@@ -1,0 +1,143 @@
+{
+  "_doc": "校准数据：同一场景、同一张 RAW 用不同风格出的 JPG。base 是输入（最接近手机直出的风格），look 是目标。calibrate.py 读这里。",
+  "datasets": [
+    {
+      "id": "fuji-friimaind",
+      "source": "https://github.com/friimaind/film-simulations-comparator (MIT)",
+      "baseUrl": "https://raw.githubusercontent.com/friimaind/film-simulations-comparator/main/images/",
+      "pattern": "simulation_{subject}_{look}.jpg",
+      "subjects": [
+        "ana-markovych",
+        "lili-liu",
+        "naoya-takahashi"
+      ],
+      "base": "provia"
+    },
+    {
+      "id": "sony-official",
+      "type": "compound",
+      "source": "https://www.sony.co.uk/interchangeable-lens-cameras/creativelook（官网对比图，scene7 图床）",
+      "baseUrl": "https://sony.scene7.com/is/image/sonyglobalsolutions/",
+      "pattern": "00_202504_Sample{subject}_{panel}?wid=2400&fmt=png-alpha",
+      "subjects": [
+        "4",
+        "5",
+        "6"
+      ],
+      "looks": {
+        "ST": [
+          "1",
+          0
+        ],
+        "PT": [
+          "1",
+          1
+        ],
+        "NT": [
+          "2",
+          0
+        ],
+        "VV": [
+          "2",
+          1
+        ],
+        "VV2": [
+          "3",
+          0
+        ],
+        "FL": [
+          "3",
+          1
+        ],
+        "FL2": [
+          "4",
+          0
+        ],
+        "FL3": [
+          "4",
+          1
+        ],
+        "IN": [
+          "5",
+          0
+        ],
+        "SH": [
+          "5",
+          1
+        ]
+      },
+      "base": "ST"
+    }
+  ],
+  "filters": [
+    {
+      "filter": "vv",
+      "dataset": "fuji-friimaind",
+      "look": "velvia"
+    },
+    {
+      "filter": "as",
+      "dataset": "fuji-friimaind",
+      "look": "astia"
+    },
+    {
+      "filter": "cc",
+      "dataset": "fuji-friimaind",
+      "look": "classic-chrome"
+    },
+    {
+      "filter": "cn",
+      "dataset": "fuji-friimaind",
+      "look": "classic-neg"
+    },
+    {
+      "filter": "nn",
+      "dataset": "fuji-friimaind",
+      "look": "nostalgic-neg"
+    },
+    {
+      "filter": "et",
+      "dataset": "fuji-friimaind",
+      "look": "eterna"
+    },
+    {
+      "filter": "bb",
+      "dataset": "fuji-friimaind",
+      "look": [
+        "eterna-bb",
+        "eternabb"
+      ]
+    },
+    {
+      "filter": "ra",
+      "dataset": "fuji-friimaind",
+      "look": "reala-ace"
+    },
+    {
+      "filter": "ac",
+      "dataset": "fuji-friimaind",
+      "look": "acros",
+      "mono": true
+    },
+    {
+      "filter": "fl",
+      "dataset": "sony-official",
+      "look": "FL"
+    },
+    {
+      "filter": "in",
+      "dataset": "sony-official",
+      "look": "IN"
+    },
+    {
+      "filter": "sh",
+      "dataset": "sony-official",
+      "look": "SH"
+    },
+    {
+      "filter": "vv2",
+      "dataset": "sony-official",
+      "look": "VV2"
+    }
+  ]
+}

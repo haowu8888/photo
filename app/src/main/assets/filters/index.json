@@ -1,0 +1,560 @@
+{
+  "lutSize": 33,
+  "groups": [
+    {
+      "id": "app",
+      "name": "热门"
+    },
+    {
+      "id": "mood",
+      "name": "氛围"
+    },
+    {
+      "id": "fuji",
+      "name": "富士"
+    },
+    {
+      "id": "sony",
+      "name": "索尼"
+    },
+    {
+      "id": "ricoh",
+      "name": "理光"
+    },
+    {
+      "id": "dji",
+      "name": "大疆"
+    },
+    {
+      "id": "lumix",
+      "name": "松下"
+    },
+    {
+      "id": "kodak",
+      "name": "柯达"
+    },
+    {
+      "id": "film",
+      "name": "胶卷"
+    },
+    {
+      "id": "retro",
+      "name": "复古"
+    }
+  ],
+  "filters": [
+    {
+      "id": "cpm",
+      "code": "CPM",
+      "name": "数码胶片",
+      "group": "app",
+      "grain": 0.22,
+      "vignette": 0.12,
+      "dateStamp": true,
+      "halation": {
+        "amount": 0.2,
+        "threshold": 0.85,
+        "tint": [
+          1,
+          1,
+          1
+        ],
+        "radius": 1.5
+      },
+      "lut": "filters/luts/cpm.png"
+    },
+    {
+      "id": "cu",
+      "code": "CU",
+      "name": "一次性",
+      "group": "app",
+      "grain": 0.25,
+      "vignette": 0.25,
+      "lut": "filters/luts/cu.png"
+    },
+    {
+      "id": "h98",
+      "code": "98",
+      "name": "漏光",
+      "group": "app",
+      "grain": 0.3,
+      "vignette": 0.2,
+      "dateStamp": true,
+      "leak": {
+        "amount": 0.65,
+        "x": 0.0,
+        "y": 0.35
+      },
+      "lut": "filters/luts/h98.png"
+    },
+    {
+      "id": "crm",
+      "code": "CRM",
+      "name": "奶油",
+      "group": "mood",
+      "grain": 0.0,
+      "vignette": 0.0,
+      "lut": "filters/luts/crm.png"
+    },
+    {
+      "id": "jp",
+      "code": "JP",
+      "name": "日系",
+      "group": "mood",
+      "grain": 0.0,
+      "vignette": 0.0,
+      "lut": "filters/luts/jp.png"
+    },
+    {
+      "id": "kr",
+      "code": "KR",
+      "name": "韩系",
+      "group": "mood",
+      "grain": 0.0,
+      "vignette": 0.0,
+      "lut": "filters/luts/kr.png"
+    },
+    {
+      "id": "pch",
+      "code": "PCH",
+      "name": "蜜桃",
+      "group": "mood",
+      "grain": 0.0,
+      "vignette": 0.0,
+      "lut": "filters/luts/pch.png"
+    },
+    {
+      "id": "for",
+      "code": "FOR",
+      "name": "森系",
+      "group": "mood",
+      "grain": 0.1,
+      "vignette": 0.1,
+      "lut": "filters/luts/for.png"
+    },
+    {
+      "id": "sun",
+      "code": "SUN",
+      "name": "落日",
+      "group": "mood",
+      "grain": 0.1,
+      "vignette": 0.15,
+      "halation": {
+        "amount": 0.2,
+        "threshold": 0.8,
+        "tint": [
+          1,
+          0.55,
+          0.3
+        ],
+        "radius": 1.0
+      },
+      "lut": "filters/luts/sun.png"
+    },
+    {
+      "id": "pv",
+      "code": "PV",
+      "name": "标准正片",
+      "group": "fuji",
+      "grain": 0.0,
+      "vignette": 0.0,
+      "lut": "filters/luts/pv.png"
+    },
+    {
+      "id": "vv",
+      "code": "VV",
+      "name": "鲜艳正片",
+      "group": "fuji",
+      "grain": 0.0,
+      "vignette": 0.12,
+      "lut": "filters/luts/vv.png"
+    },
+    {
+      "id": "as",
+      "code": "AS",
+      "name": "柔和人像",
+      "group": "fuji",
+      "grain": 0.0,
+      "vignette": 0.0,
+      "lut": "filters/luts/as.png"
+    },
+    {
+      "id": "cc",
+      "code": "CC",
+      "name": "经典正片",
+      "group": "fuji",
+      "grain": 0.18,
+      "vignette": 0.18,
+      "lut": "filters/luts/cc.png"
+    },
+    {
+      "id": "cn",
+      "code": "CN",
+      "name": "经典负片",
+      "group": "fuji",
+      "grain": 0.22,
+      "vignette": 0.15,
+      "lut": "filters/luts/cn.png"
+    },
+    {
+      "id": "nn",
+      "code": "NN",
+      "name": "怀旧负片",
+      "group": "fuji",
+      "grain": 0.2,
+      "vignette": 0.15,
+      "lut": "filters/luts/nn.png"
+    },
+    {
+      "id": "et",
+      "code": "ET",
+      "name": "电影",
+      "group": "fuji",
+      "grain": 0.12,
+      "vignette": 0.2,
+      "lut": "filters/luts/et.png"
+    },
+    {
+      "id": "bb",
+      "code": "BB",
+      "name": "漂白",
+      "group": "fuji",
+      "grain": 0.2,
+      "vignette": 0.2,
+      "lut": "filters/luts/bb.png"
+    },
+    {
+      "id": "ra",
+      "code": "RA",
+      "name": "写实",
+      "group": "fuji",
+      "grain": 0.0,
+      "vignette": 0.0,
+      "lut": "filters/luts/ra.png"
+    },
+    {
+      "id": "ac",
+      "code": "AC",
+      "name": "细腻黑白",
+      "group": "fuji",
+      "grain": 0.35,
+      "vignette": 0.15,
+      "lut": "filters/luts/ac.png"
+    },
+    {
+      "id": "fl",
+      "code": "FL",
+      "name": "胶片",
+      "group": "sony",
+      "grain": 0.1,
+      "vignette": 0.1,
+      "lut": "filters/luts/fl.png"
+    },
+    {
+      "id": "in",
+      "code": "IN",
+      "name": "即时",
+      "group": "sony",
+      "grain": 0.12,
+      "vignette": 0.1,
+      "lut": "filters/luts/in.png"
+    },
+    {
+      "id": "sh",
+      "code": "SH",
+      "name": "柔和高调",
+      "group": "sony",
+      "grain": 0.0,
+      "vignette": 0.0,
+      "lut": "filters/luts/sh.png"
+    },
+    {
+      "id": "vv2",
+      "code": "VV2",
+      "name": "鲜艳",
+      "group": "sony",
+      "grain": 0.0,
+      "vignette": 0.0,
+      "lut": "filters/luts/vv2.png"
+    },
+    {
+      "id": "gp",
+      "code": "GP",
+      "name": "正片",
+      "group": "ricoh",
+      "grain": 0.0,
+      "vignette": 0.1,
+      "lut": "filters/luts/gp.png"
+    },
+    {
+      "id": "gn",
+      "code": "GN",
+      "name": "负片",
+      "group": "ricoh",
+      "grain": 0.15,
+      "vignette": 0.12,
+      "lut": "filters/luts/gn.png"
+    },
+    {
+      "id": "gb",
+      "code": "GB",
+      "name": "漂白",
+      "group": "ricoh",
+      "grain": 0.18,
+      "vignette": 0.15,
+      "lut": "filters/luts/gb.png"
+    },
+    {
+      "id": "gr",
+      "code": "GR",
+      "name": "复古",
+      "group": "ricoh",
+      "grain": 0.25,
+      "vignette": 0.25,
+      "lut": "filters/luts/gr.png"
+    },
+    {
+      "id": "gh",
+      "code": "GH",
+      "name": "高对比黑白",
+      "group": "ricoh",
+      "grain": 0.45,
+      "vignette": 0.3,
+      "lut": "filters/luts/gh.png"
+    },
+    {
+      "id": "dn",
+      "code": "DN",
+      "name": "航拍",
+      "group": "dji",
+      "grain": 0.0,
+      "vignette": 0.0,
+      "lut": "filters/luts/dn.png"
+    },
+    {
+      "id": "vl",
+      "code": "VL",
+      "name": "清透",
+      "group": "dji",
+      "grain": 0.0,
+      "vignette": 0.0,
+      "lut": "filters/luts/vl.png"
+    },
+    {
+      "id": "bm",
+      "code": "BM",
+      "name": "黑柔",
+      "group": "dji",
+      "grain": 0.0,
+      "vignette": 0.05,
+      "halation": {
+        "amount": 0.55,
+        "threshold": 0.55,
+        "tint": [
+          1,
+          1,
+          1
+        ],
+        "radius": 3.0
+      },
+      "lut": "filters/luts/bm.png"
+    },
+    {
+      "id": "ln",
+      "code": "LN",
+      "name": "经典新调",
+      "group": "lumix",
+      "grain": 0.2,
+      "vignette": 0.22,
+      "lut": "filters/luts/ln.png"
+    },
+    {
+      "id": "lm",
+      "code": "LM",
+      "name": "徕黑白",
+      "group": "lumix",
+      "grain": 0.25,
+      "vignette": 0.25,
+      "lut": "filters/luts/lm.png"
+    },
+    {
+      "id": "p4",
+      "code": "P4",
+      "name": "人像负片",
+      "group": "kodak",
+      "grain": 0.2,
+      "vignette": 0.1,
+      "halation": {
+        "amount": 0.15,
+        "threshold": 0.8,
+        "tint": [
+          1,
+          0.32,
+          0.12
+        ],
+        "radius": 1.0
+      },
+      "lut": "filters/luts/p4.png"
+    },
+    {
+      "id": "g2",
+      "code": "G2",
+      "name": "金色",
+      "group": "kodak",
+      "grain": 0.25,
+      "vignette": 0.15,
+      "halation": {
+        "amount": 0.15,
+        "threshold": 0.8,
+        "tint": [
+          1,
+          0.32,
+          0.12
+        ],
+        "radius": 1.0
+      },
+      "lut": "filters/luts/g2.png"
+    },
+    {
+      "id": "e1",
+      "code": "E1",
+      "name": "风光",
+      "group": "kodak",
+      "grain": 0.08,
+      "vignette": 0.1,
+      "lut": "filters/luts/e1.png"
+    },
+    {
+      "id": "tx",
+      "code": "TX",
+      "name": "街头黑白",
+      "group": "kodak",
+      "grain": 0.5,
+      "vignette": 0.2,
+      "lut": "filters/luts/tx.png"
+    },
+    {
+      "id": "cs",
+      "code": "CS",
+      "name": "夜景 800T",
+      "group": "film",
+      "grain": 0.3,
+      "vignette": 0.15,
+      "halation": {
+        "amount": 0.7,
+        "threshold": 0.72,
+        "tint": [
+          1,
+          0.32,
+          0.12
+        ],
+        "radius": 1.2
+      },
+      "lut": "filters/luts/cs.png"
+    },
+    {
+      "id": "su",
+      "code": "SU",
+      "name": "日常 400",
+      "group": "film",
+      "grain": 0.25,
+      "vignette": 0.12,
+      "lut": "filters/luts/su.png"
+    },
+    {
+      "id": "c2",
+      "code": "C2",
+      "name": "平价 200",
+      "group": "film",
+      "grain": 0.25,
+      "vignette": 0.12,
+      "lut": "filters/luts/c2.png"
+    },
+    {
+      "id": "ag",
+      "code": "AG",
+      "name": "暖红",
+      "group": "film",
+      "grain": 0.25,
+      "vignette": 0.12,
+      "lut": "filters/luts/ag.png"
+    },
+    {
+      "id": "lp",
+      "code": "LP",
+      "name": "紫调",
+      "group": "film",
+      "grain": 0.3,
+      "vignette": 0.15,
+      "lut": "filters/luts/lp.png"
+    },
+    {
+      "id": "hp",
+      "code": "HP",
+      "name": "柔和黑白",
+      "group": "film",
+      "grain": 0.4,
+      "vignette": 0.15,
+      "lut": "filters/luts/hp.png"
+    },
+    {
+      "id": "ccd",
+      "code": "CCD",
+      "name": "千禧数码",
+      "group": "retro",
+      "grain": 0.08,
+      "vignette": 0.05,
+      "dateStamp": true,
+      "halation": {
+        "amount": 0.35,
+        "threshold": 0.82,
+        "tint": [
+          1,
+          1,
+          1
+        ],
+        "radius": 1.5
+      },
+      "lut": "filters/luts/ccd.png"
+    },
+    {
+      "id": "ip",
+      "code": "IP",
+      "name": "拍立得",
+      "group": "retro",
+      "grain": 0.12,
+      "vignette": 0.2,
+      "frame": "polaroid",
+      "lut": "filters/luts/ip.png"
+    },
+    {
+      "id": "dv",
+      "code": "DV",
+      "name": "千禧 DV",
+      "group": "retro",
+      "grain": 0.15,
+      "vignette": 0.1,
+      "dateStamp": true,
+      "lut": "filters/luts/dv.png"
+    },
+    {
+      "id": "hk",
+      "code": "HK",
+      "name": "港风",
+      "group": "retro",
+      "grain": 0.2,
+      "vignette": 0.25,
+      "halation": {
+        "amount": 0.25,
+        "threshold": 0.8,
+        "tint": [
+          1,
+          0.5,
+          0.3
+        ],
+        "radius": 1.0
+      },
+      "lut": "filters/luts/hk.png"
+    }
+  ]
+}
