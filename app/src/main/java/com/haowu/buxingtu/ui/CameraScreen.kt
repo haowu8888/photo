@@ -3,6 +3,7 @@ package com.haowu.buxingtu.ui
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.media.MediaActionSound
+import android.util.Size
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -137,9 +138,11 @@ fun CameraScreen(vm: CameraViewModel, onController: (CameraController) -> Unit) 
         }
     }
 
-    LaunchedEffect(vm.front) {
-        controller.bind(vm.front) { cam ->
+    LaunchedEffect(vm.front, vm.sizeChoice) {
+        val size = vm.sizeChoice.split('x').mapNotNull { it.toIntOrNull() }.takeIf { it.size == 2 }?.let { Size(it[0], it[1]) }
+        controller.bind(vm.front, size) { cam ->
             cam.cameraInfo.zoomState.observe(lifecycleOwner) { z -> zoomText = "%.1fx".format(z.zoomRatio) }
+            vm.captureOptions = controller.captureOptions()
         }
     }
     LaunchedEffect(vm.flash, vm.front) { controller.setFlash(if (vm.front) FlashMode.OFF.camerax else vm.flash.camerax) }
@@ -185,6 +188,8 @@ fun CameraScreen(vm: CameraViewModel, onController: (CameraController) -> Unit) 
                 flashAlpha.animateTo(0f, tween(260))
             }
             controller.takePicture(
+                fullRes = vm.sizeChoice == FULL_RES,
+                onFullRes = { vm.message = "全像素拍摄中，请拿稳…" },
                 onCaptured = { jpeg, rotation -> vm.process(jpeg, rotation) },
                 onError = { vm.message = "拍照失败：${it.message}" },
             )

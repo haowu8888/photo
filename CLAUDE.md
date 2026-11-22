@@ -14,7 +14,8 @@ Android 胶片滤镜相机（Kotlin + Compose + CameraX + OpenGL ES 3.0）。设
 - `face/` — ML Kit 人脸轮廓（内置模型，不依赖 GMS）：`FaceTracker` 接 ImageAnalysis 640×480 实时跟踪，`FaceDetectorSync` 成片时在全分辨率上重检；`FaceShape.toUniforms` 换算到输出坐标（裁切、前摄镜像）
 - `effect/Effect.kt` — 特效（鱼眼/镜像/万花筒/波普/色散/故障/星芒/双重曝光），code 对应 shader 的 uEffect；双重曝光第一张留在 PhotoProcessor 内存里，第二张用 SCREEN 混合合成
 - `camera/PhotoProcessor.kt` — 全分辨率 JPEG → 离屏 EGL 跑同一套渲染 → 日期戳 → 边框 → EXIF → `DCIM/睡图`
-- `camera/CameraController.kt` — CameraX 绑定、对焦、变焦、拍照
+- `camera/CameraController.kt` — CameraX 绑定、对焦、变焦、拍照；拍照尺寸可选（设置里列出 4:3 尺寸，默认最高，前后摄分开记）
+- `camera/FullResCapture.kt` — 全像素模式（Android 12+ ULTRA_HIGH_RESOLUTION_SENSOR）：CameraX 1.4 不设 SENSOR_PIXEL_MODE 用不了，拍那一张时 unbind CameraX → Camera2 小 YUV 流跑 3A → MAXIMUM_RESOLUTION JPEG → 重新绑定；前摄/闪光灯/变焦时退回普通拍照。多数国产机不开放给第三方
 - `ui/CameraScreen.kt`、`ui/CameraViewModel.kt` — 界面与状态（SharedPreferences 记住滤镜、强度、画幅、美颜、特效等）
 - `update/Updater.kt` + `ui/UpdateDialog.kt` — 自动更新：读 Cloudreve 分享里 `Shuitu-<版本>.apk`，比 `BuildConfig.VERSION_NAME` 新就下载、比对签名、交给系统安装（FileProvider + REQUEST_INSTALL_PACKAGES）；分享 ID 由流水线 `-PupdateShare` 注入，本地构建为空不检查
 

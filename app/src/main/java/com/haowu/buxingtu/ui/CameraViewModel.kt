@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
+import com.haowu.buxingtu.camera.CameraController
 import com.haowu.buxingtu.camera.PhotoProcessor
 import com.haowu.buxingtu.effect.Effect
 import com.haowu.buxingtu.filter.Filter
@@ -28,6 +29,8 @@ enum class AspectRatio(val label: String, val ratio: Float) {
 
     fun next() = entries[(ordinal + 1) % entries.size]
 }
+
+const val FULL_RES = "full"
 
 enum class FlashMode(val label: String, val camerax: Int) {
     OFF("关", ImageCapture.FLASH_MODE_OFF),
@@ -46,7 +49,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     var filter by mutableStateOf(catalog.filters.firstOrNull { it.id == prefs.getString("filter", "cc") } ?: catalog.filters[0])
         private set
     private val intensities = mutableStateMapOf<String, Float>()
-    var ratio by mutableStateOf(AspectRatio.entries.getOrElse(prefs.getInt("ratio", 0)) { AspectRatio.R3_2 })
+    // 默认 4:3 = 传感器原生比例，不裁像素
+    var ratio by mutableStateOf(AspectRatio.entries.getOrElse(prefs.getInt("ratio", AspectRatio.R4_3.ordinal)) { AspectRatio.R4_3 })
         private set
     var flash by mutableStateOf(FlashMode.entries.getOrElse(prefs.getInt("flash", 0)) { FlashMode.OFF })
         private set
@@ -89,7 +93,22 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     var lastParams by mutableStateOf<String?>(null)
         private set
     var message by mutableStateOf<String?>(null)
-    private var resolutionShown = false
+    /** 上一张成片像素数，变了才提示 */
+    private var lastPixels = 0L
+
+    /** 拍照尺寸，前后摄分开记："" = 最高，"宽x高" = 指定尺寸，[FULL_RES] = 全像素模式 */
+    private val sizeChoices = mutableStateMapOf(
+        false to (prefs.getString("size_back", "") ?: ""),
+        true to (prefs.getString("size_front", "") ?: ""),
+    )
+    val sizeChoice: String get() = sizeChoices[front] ?: ""
+    /** 当前相机的可选尺寸，绑定相机后由界面填 */
+    var captureOptions by mutableStateOf<CameraController.CaptureOptions?>(null)
+
+    fun selectSize(choice: String) {
+        sizeChoices[front] = choice
+        prefs.edit { putString(if (front) "size_front" else "size_back", choice) }
+    }
     /** 音量键等外部触发快门，每次 +1 */
     var shutterRequests by mutableIntStateOf(0)
         private set
@@ -286,9 +305,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                         if (doubleArmed) doubleOverlay = it.overlay // 期间被取消就不再显示
                         else it.overlay.recycle()
                     }
-                    if (it.uri != null && (!resolutionShown || it.downscaled)) {
-                        // 第一张和降分辨率时提示一下成片像素，方便确认画质
-                        resolutionShown = true
+                    if (it.uri != null && (it.pixels != lastPixels || it.downscaled)) {
+                        // 成片像素变了（第一张、换尺寸、全像素退回普通）和降分辨率时提示一下，方便确认画质
+                        lastPixels = it.pixels
                         val mp = it.pixels / 10_000
                         message = if (it.downscaled) "内存不足，已降为 $mp 万像素保存" else "已保存 · $mp 万像素"
                     }
