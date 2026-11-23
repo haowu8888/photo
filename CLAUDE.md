@@ -16,7 +16,9 @@ Android 胶片滤镜相机（Kotlin + Compose + CameraX + OpenGL ES 3.0）。设
 - `camera/PhotoProcessor.kt` — 全分辨率 JPEG → 离屏 EGL 跑同一套渲染 → 日期戳 → 边框 → EXIF → `DCIM/睡图`
 - `camera/CameraController.kt` — CameraX 绑定、对焦、变焦、拍照；拍照尺寸可选（设置里列出 4:3 尺寸，默认最高，前后摄分开记）
 - `camera/FullResCapture.kt` — 全像素模式（Android 12+ ULTRA_HIGH_RESOLUTION_SENSOR）：CameraX 1.4 不设 SENSOR_PIXEL_MODE 用不了，拍那一张时 unbind CameraX → Camera2 小 YUV 流跑 3A → MAXIMUM_RESOLUTION JPEG → 重新绑定；前摄/闪光灯/变焦时退回普通拍照。多数国产机不开放给第三方
-- `ui/CameraScreen.kt`、`ui/CameraViewModel.kt` — 界面与状态（SharedPreferences 记住滤镜、强度、画幅、美颜、特效等）
+- `preset/Cams.kt` — 「相机」预设（Dazz 式，60 台，6 类）：每台 = 滤镜 id + 画幅 + 边框 + 日期戳 + 随机漏光强度 + 默认配件（特效）+ 图标配色；型号名自编，不用品牌名。随机漏光每拍一张换种子（`ResolvedCam.filterFor(seed)`），预览和成片同一个种子
+- `ui/CameraScreen.kt`、`ui/CameraViewModel.kt` — 界面与状态：顶栏（设置/闪光/定时/画幅/网格/导入/翻转）→ 取景器（左右滑换相机，托盘浮在底部）→ 机身面板（铭牌、DATE/边框/配件/美颜/±EV 实体键、相册/金属快门/换相机）；导入照片（最多 9 张，按原比例/方向、日期戳用 EXIF 拍摄时间）。SharedPreferences 记住相机、强度、画幅、美颜、配件等；曝光补偿不记
+- `ui/CamPicker.kt`、`ui/CamIcon.kt` — 相机架（分类网格 + 当前相机强度滑杆）；相机图标用 Canvas 按机身类型（旁轴/单反/卡片/拍立得/一次性/CCD/DV/玩具/双反）画
 - `update/Updater.kt` + `ui/UpdateDialog.kt` — 自动更新：读 Cloudreve 分享里 `Shuitu-<版本>.apk`，比 `BuildConfig.VERSION_NAME` 新就下载、比对签名、交给系统安装（FileProvider + REQUEST_INSTALL_PACKAGES）；分享 ID 由流水线 `-PupdateShare` 注入，本地构建为空不检查
 
 ## 改滤镜
@@ -51,6 +53,7 @@ Android 胶片滤镜相机（Kotlin + Compose + CameraX + OpenGL ES 3.0）。设
 
 容器里没有 KVM，跑不了模拟器。
 - shader：无头 Chromium 的 WebGL2 跑同一套 shader（含 GlowPass 的 JS 移植），和 `lutgen.apply_effects` / `apply_beauty` 逐像素对比。
-- 单元测试 `./gradlew :app:testDebugUnitTest`：边框（Robolectric 原生图形，渲染到 `app/build/frame-previews/`）、人脸坐标换算。
+- 单元测试 `./gradlew :app:testDebugUnitTest`：边框（Robolectric 原生图形，渲染到 `app/build/frame-previews/`）、人脸坐标换算、界面截图（`ui/ScreenshotTest`：相机图标墙、相机架、主界面 → `app/build/ui-previews/`，预览区是黑的）。
+- 本地装到手机：`-PversionCode` 不能低于手机上已装的（网盘版是 100+运行号），否则装不上。
 - 人脸检测本身（ML Kit）只能真机验证。
 - 相机相关的行为只能在真机上验证。

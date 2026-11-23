@@ -64,6 +64,10 @@ class PhotoProcessor(private val context: Context, private val lutSize: Int) {
         val beauty: Beauty,
         val effect: Effect,
         val double: DoubleStage = DoubleStage.NONE,
+        /** 水印边框标题里的相机名 */
+        val camName: String = filter.name,
+        /** 日期戳 / 水印用的时间：拍照为 null（现在），导入的照片用原拍摄时间 */
+        val date: Date? = null,
     )
 
     /** 双重曝光：第一张只留在内存里，第二张拍完后叠上去再保存 */
@@ -198,7 +202,7 @@ class PhotoProcessor(private val context: Context, private val lutSize: Int) {
             }
             DoubleStage.NONE -> {}
         }
-        if (job.dateStamp) DateStamp.draw(Canvas(out), outW, outH)
+        if (job.dateStamp) DateStamp.draw(Canvas(out), outW, outH, job.date ?: Date())
         if (job.frame != FrameStyle.NONE) out = addFrame(out, job, params, exif)
 
         val uri = save(out, job.jpeg)
@@ -242,7 +246,7 @@ class PhotoProcessor(private val context: Context, private val lutSize: Int) {
         val framed = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(framed)
         val rect = android.graphics.RectF(left.toFloat(), top.toFloat(), (left + image.width).toFloat(), (top + image.height).toFloat())
-        val info = frameInfo(job.filter, params, exif?.getAttribute(ExifInterface.TAG_MODEL))
+        val info = frameInfo(job.camName, params, exif?.getAttribute(ExifInterface.TAG_MODEL), job.date ?: Date())
         job.frame.draw(canvas, w.toFloat(), h.toFloat(), rect, info)
         canvas.drawBitmap(image, left.toFloat(), top.toFloat(), null)
         image.recycle()
@@ -385,9 +389,9 @@ class PhotoProcessor(private val context: Context, private val lutSize: Int) {
         const val ALBUM = "睡图"
 
         /** 水印边框文字；预览时 params 用上一张照片的，没有就显示占位。 */
-        fun frameInfo(filter: Filter, params: String?, model: String?): FrameInfo = FrameInfo(
-            title = "睡图 · ${filter.code} ${filter.name}",
-            subtitle = SimpleDateFormat("yyyy.MM.dd  HH:mm", Locale.US).format(Date()),
+        fun frameInfo(camName: String, params: String?, model: String?, date: Date = Date()): FrameInfo = FrameInfo(
+            title = "睡图 · $camName",
+            subtitle = SimpleDateFormat("yyyy.MM.dd  HH:mm", Locale.US).format(date),
             params = params ?: "f/--  1/--s  ISO--",
             device = model?.takeIf { it.isNotBlank() } ?: "${Build.MANUFACTURER} ${Build.MODEL}",
         )

@@ -20,9 +20,20 @@ import com.haowu.buxingtu.filter.Filters
 import com.haowu.buxingtu.frame.FrameStyle
 import com.haowu.buxingtu.gl.Beauty
 import com.haowu.buxingtu.update.Updater
+import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.viewModelScope
+import com.haowu.buxingtu.preset.Cams
+import com.haowu.buxingtu.preset.ResolvedCam
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
 import java.io.File
+import java.util.Date
+import kotlin.coroutines.resume
+import kotlin.math.abs
+import kotlin.random.Random
 
 enum class AspectRatio(val label: String, val ratio: Float) {
     R3_2("3:2", 1.5f), R4_3("4:3", 4f / 3f), R1_1("1:1", 1f), R16_9("16:9", 16f / 9f);
@@ -46,8 +57,24 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     val catalog = Filters.load(app)
     val processor = PhotoProcessor(app, catalog.lutSize)
 
-    var filter by mutableStateOf(catalog.filters.firstOrNull { it.id == prefs.getString("filter", "cc") } ?: catalog.filters[0])
+    val cams = Cams.resolve(catalog)
+
+    /** 当前相机；老版本只存了滤镜 id，找用这个滤镜的第一台相机 */
+    var cam by mutableStateOf(
+        prefs.getString("cam", null)?.let { id -> cams.firstOrNull { it.cam.id == id } }
+            ?: prefs.getString("filter", null)?.let { id -> cams.firstOrNull { it.filter.id == id } }
+            ?: cams[0]
+    )
         private set
+    val filter: Filter get() = cam.filter
+    /** 随机漏光的种子，每拍一张换一次 */
+    var leakSeed by mutableIntStateOf(Random.nextInt())
+        private set
+    /** 预览和成片实际用的滤镜（带这次的漏光位置） */
+    val renderFilter: Filter get() = cam.filterFor(leakSeed)
+    /** 曝光补偿档位，不记住（重开 App 回到 0） */
+    var ev by mutableIntStateOf(0)
+    var exposure by mutableStateOf<CameraController.Exposure?>(null)
     private val intensities = mutableStateMapOf<String, Float>()
     // 默认 4:3 = 传感器原生比例，不裁像素
     var ratio by mutableStateOf(AspectRatio.entries.getOrElse(prefs.getInt("ratio", AspectRatio.R4_3.ordinal)) { AspectRatio.R4_3 })
@@ -81,7 +108,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var front by mutableStateOf(false)
     /** 切滤镜时跟随滤镜默认值，用户可以单独开关 */
-    var dateStamp by mutableStateOf(filter.dateStamp)
+    var dateStamp by mutableStateOf(cam.dateStamp)
 
     var lastThumb by mutableStateOf<Bitmap?>(null)
         private set
@@ -178,7 +205,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     init {
-        filter.frame?.let {
+        (cam.cam.frame ?: filter.frame)?.let {
             frame = FrameStyle.byId(it)
             autoFrame = true
         }
@@ -190,18 +217,25 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
 
     fun intensityOf(f: Filter): Float = intensities[f.id] ?: 1f
 
-    fun select(f: Filter) {
+    /** 换相机：边框、日期戳、画幅、配件都跟着相机走。 */
+    fun selectCam(rc: ResolvedCam) {
         if (autoFrame) {
             frame = userFrame
             autoFrame = false
         }
-        f.frame?.let {
+        (rc.cam.frame ?: rc.filter.frame)?.let {
             frame = FrameStyle.byId(it)
             autoFrame = true
         }
-        filter = f
-        dateStamp = f.dateStamp
-        prefs.edit { putString("filter", f.id) }
+        rc.cam.ratio?.let { r ->
+            ratio = AspectRatio.entries.minBy { abs(it.ratio - r) }
+            prefs.edit { putInt("ratio", ratio.ordinal) }
+        }
+        if (rc.cam.effect != effect && (rc.cam.effect != Effect.NONE || cam.cam.effect != Effect.NONE)) selectEffect(rc.cam.effect)
+        cam = rc
+        dateStamp = rc.dateStamp
+        leakSeed = Random.nextInt()
+        prefs.edit { putString("cam", rc.cam.id) }
     }
 
     fun updateBeauty(value: Beauty) {
@@ -238,11 +272,10 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     /** 竖屏取景时的画幅（长边/短边）：边框强制的优先。 */
     val previewRatio: Float get() = frame.forcedRatio(landscape = false) ?: ratio.ratio
 
-    /** 左右滑切换到相邻滤镜。 */
+    /** 左右滑切换到相邻相机。 */
     fun step(delta: Int) {
-        val list = catalog.filters
-        val i = list.indexOf(filter)
-        select(list[((i + delta) % list.size + list.size) % list.size])
+        val i = cams.indexOf(cam)
+        selectCam(cams[((i + delta) % cams.size + cams.size) % cams.size])
     }
 
     fun setIntensity(value: Float) {
@@ -274,8 +307,40 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         shutterRequests++
     }
 
-    fun process(jpeg: ByteArray, rotation: Int) {
+    private fun job(jpeg: ByteArray, rotation: Int, mirror: Boolean, ratio: Float, effect: Effect,
+                    stage: PhotoProcessor.DoubleStage, date: Date? = null) = PhotoProcessor.Job(
+        jpeg = jpeg,
+        rotation = rotation,
+        mirror = mirror,
+        ratio = ratio,
+        filter = renderFilter,
+        intensity = if (filter.lut == null) 0f else intensityOf(filter),
+        dateStamp = dateStamp,
+        frame = frame,
+        beauty = beauty,
+        effect = effect,
+        double = stage,
+        camName = cam.cam.name,
+        date = date,
+    )
+
+    /** 交给处理线程；结果回到主线程，更新缩略图等。 */
+    private fun submit(job: PhotoProcessor.Job, onResult: (kotlin.Result<PhotoProcessor.Result>) -> Unit) {
         processing++
+        processor.submit(job) { result ->
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                processing--
+                result.onSuccess {
+                    it.thumbnail?.let { t -> lastThumb = t }
+                    it.uri?.let { u -> lastUri = u }
+                    it.params?.let { p -> lastParams = p }
+                }
+                onResult(result)
+            }
+        }
+    }
+
+    fun process(jpeg: ByteArray, rotation: Int) {
         val stage = when {
             effect != Effect.DOUBLE -> PhotoProcessor.DoubleStage.NONE
             doubleArmed -> PhotoProcessor.DoubleStage.SECOND
@@ -284,41 +349,54 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         // 处理线程按顺序执行，第一张没处理完就按第二次快门也没问题
         doubleArmed = stage == PhotoProcessor.DoubleStage.FIRST
         if (stage == PhotoProcessor.DoubleStage.SECOND) doubleOverlay = null
-        val job = PhotoProcessor.Job(
-            jpeg = jpeg,
-            rotation = rotation,
-            mirror = front,
-            ratio = ratio.ratio,
-            filter = filter,
-            intensity = if (filter.lut == null) 0f else intensityOf(filter),
-            dateStamp = dateStamp,
-            frame = frame,
-            beauty = beauty,
-            effect = effect,
-            double = stage,
-        )
-        processor.submit(job) { result ->
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                processing--
-                result.onSuccess {
-                    if (it.overlay != null) {
-                        if (doubleArmed) doubleOverlay = it.overlay // 期间被取消就不再显示
-                        else it.overlay.recycle()
-                    }
-                    if (it.uri != null && (it.pixels != lastPixels || it.downscaled)) {
-                        // 成片像素变了（第一张、换尺寸、全像素退回普通）和降分辨率时提示一下，方便确认画质
-                        lastPixels = it.pixels
-                        val mp = it.pixels / 10_000
-                        message = if (it.downscaled) "内存不足，已降为 $mp 万像素保存" else "已保存 · $mp 万像素"
-                    }
-                    it.thumbnail?.let { t -> lastThumb = t }
-                    it.uri?.let { u -> lastUri = u }
-                    it.params?.let { p -> lastParams = p }
-                }.onFailure {
-                    if (stage == PhotoProcessor.DoubleStage.FIRST) doubleArmed = false
-                    message = "保存失败：${it.message}"
+        submit(job(jpeg, rotation, front, ratio.ratio, effect, stage)) { result ->
+            result.onSuccess {
+                if (it.overlay != null) {
+                    if (doubleArmed) doubleOverlay = it.overlay // 期间被取消就不再显示
+                    else it.overlay.recycle()
                 }
+                if (it.uri != null && (it.pixels != lastPixels || it.downscaled)) {
+                    // 成片像素变了（第一张、换尺寸、全像素退回普通）和降分辨率时提示一下，方便确认画质
+                    lastPixels = it.pixels
+                    val mp = it.pixels / 10_000
+                    message = if (it.downscaled) "内存不足，已降为 $mp 万像素保存" else "已保存 · $mp 万像素"
+                }
+            }.onFailure {
+                if (stage == PhotoProcessor.DoubleStage.FIRST) doubleArmed = false
+                message = "保存失败：${it.message}"
             }
+        }
+        // 下一张换个漏光位置（双重曝光第一张不换，两张要一致）
+        if (stage != PhotoProcessor.DoubleStage.FIRST) leakSeed = Random.nextInt()
+    }
+
+    /** 从相册导入照片，用当前相机冲洗：保持原图比例和方向，日期戳用原拍摄时间。一张张处理，避免同时占太多内存。 */
+    fun importPhotos(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            var ok = 0
+            for (uri in uris) {
+                val bytes = withContext(Dispatchers.IO) {
+                    runCatching { app.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+                }
+                if (bytes == null) continue
+                val exif = runCatching { ExifInterface(ByteArrayInputStream(bytes)) }.getOrNull()
+                val rotation = exif?.rotationDegrees ?: 0
+                val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) continue
+                val r = maxOf(bounds.outWidth, bounds.outHeight).toFloat() / minOf(bounds.outWidth, bounds.outHeight)
+                // 双重曝光是拍摄流程，导入时不用
+                val e = if (effect == Effect.DOUBLE) Effect.NONE else effect
+                val date = exif?.dateTimeOriginal?.let(::Date)
+                val result = suspendCancellableCoroutine { cont ->
+                    submit(job(bytes, rotation, false, r, e, PhotoProcessor.DoubleStage.NONE, date)) { cont.resume(it) }
+                }
+                if (result.isSuccess) ok++
+                leakSeed = Random.nextInt()
+            }
+            message = if (ok == uris.size) "已冲洗 $ok 张，存进相册" else "已冲洗 $ok 张，${uris.size - ok} 张失败"
         }
     }
 

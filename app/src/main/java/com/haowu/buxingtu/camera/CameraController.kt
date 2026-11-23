@@ -198,6 +198,22 @@ class CameraController(
         cam.cameraControl.setZoomRatio((state.zoomRatio * scale).coerceIn(state.minZoomRatio, state.maxZoomRatio))
     }
 
+    /** 曝光补偿档位范围，step 是每档多少 EV；不支持时返回 null。 */
+    data class Exposure(val min: Int, val max: Int, val step: Float)
+
+    fun exposure(): Exposure? {
+        val state = camera?.cameraInfo?.exposureState ?: return null
+        if (!state.isExposureCompensationSupported) return null
+        val range = state.exposureCompensationRange
+        return Exposure(range.lower, range.upper, state.exposureCompensationStep.toFloat())
+    }
+
+    fun setExposure(index: Int) {
+        val cam = camera ?: return
+        val range = cam.cameraInfo.exposureState.exposureCompensationRange
+        cam.cameraControl.setExposureCompensationIndex(index.coerceIn(range.lower, range.upper))
+    }
+
     /** fullRes：用全像素模式拍（真走了全像素会先回调 onFullRes）；前摄、开闪光灯或变焦时自动退回普通拍照。 */
     fun takePicture(
         fullRes: Boolean,
